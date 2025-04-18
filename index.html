@@ -20,6 +20,7 @@
             --input-bg: white;
             --typing-color: #666666;
             --font-size: 14px;
+            --bg-image: none;
         }
 
         body.dark-mode {
@@ -59,6 +60,9 @@
             overflow-y: scroll;
             background-color: var(--chat-bg);
             margin-bottom: 5px;
+            background-image: var(--bg-image);
+            background-size: cover;
+            background-position: center;
         }
 
         #message-input {
@@ -100,6 +104,24 @@
             border-radius: 5px;
             background-color: var(--message-bg);
             position: relative;
+            opacity: 0;
+            transform: scale(0.8);
+            animation: bubble-in 0.3s forwards;
+        }
+
+        @keyframes bubble-in {
+            0% {
+                opacity: 0;
+                transform: scale(0.8) translateY(10px);
+            }
+            70% {
+                opacity: 1;
+                transform: scale(1.05) translateY(-5px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
         }
 
         .message-header {
@@ -232,17 +254,6 @@
             transform: translateX(26px);
         }
 
-        #attachment-button {
-            padding: 10px;
-            background-color: var(--button-bg);
-            color: var(--button-text);
-            border: none;
-            border-radius: 3px;
-            cursor: pointer;
-            transition: opacity 0.2s;
-            margin-right: 5px;
-        }
-
         #button-container {
             display: flex;
             justify-content: flex-end;
@@ -257,6 +268,21 @@
         #message-input.dragover {
             border: 2px dashed #2196F3;
             background-color: rgba(33, 150, 243, 0.1);
+        }
+
+        #bg-container {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        #bg-url-input {
+            padding: 8px;
+            width: 60%;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            margin-right: 5px;
         }
     </style>
 </head>
@@ -283,13 +309,16 @@
         <input type="text" id="username-input" placeholder="Enter your username">
         <button id="save-username">Save</button>
     </div>
+
+    <div id="bg-container">
+        <input type="text" id="bg-url-input" placeholder="Enter background image URL">
+        <button id="set-bg">Set Background</button>
+    </div>
     
     <div id="chat-box"></div>
     <div id="typing-indicator"></div>
-    <textarea id="message-input" placeholder="Type a message or drag files here..."></textarea>
+    <textarea id="message-input" placeholder="Type a message..."></textarea>
     <div id="button-container">
-        <input type="file" id="file-input" accept="image/*,video/*,audio/*" multiple>
-        <button id="attachment-button">📎</button>
         <button id="send-button">Send</button>
     </div>
     <div id="error-message"></div>
@@ -297,7 +326,6 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 
     <script>
         const firebaseConfig = {
@@ -312,14 +340,13 @@
         };
 
         // Initialize Firebase
-        let database, messagesRef, usersRef, typingRef, storage;
+        let database, messagesRef, usersRef, typingRef;
         try {
             firebase.initializeApp(firebaseConfig);
             database = firebase.database();
             messagesRef = database.ref('messages');
             usersRef = database.ref('users');
             typingRef = database.ref('typing');
-            storage = firebase.storage();
         } catch (error) {
             document.getElementById('error-message').textContent = 'Error connecting to database: ' + error.message;
             document.getElementById('error-message').style.display = 'block';
@@ -335,8 +362,8 @@
         const darkModeToggle = document.getElementById('dark-mode-toggle');
         const fontSizeSlider = document.getElementById('font-size-slider');
         const typingIndicator = document.getElementById('typing-indicator');
-        const attachmentButton = document.getElementById('attachment-button');
-        const fileInput = document.getElementById('file-input');
+        const bgUrlInput = document.getElementById('bg-url-input');
+        const setBgButton = document.getElementById('set-bg');
 
         // Generate a unique user ID for this session
         const userId = 'user_' + Math.random().toString(36).substr(2, 9);
@@ -362,6 +389,30 @@
             }
         });
 
+        // Set background image
+        setBgButton.addEventListener('click', () => {
+            const bgUrl = bgUrlInput.value.trim();
+            if (bgUrl) {
+                // Test if URL is valid
+                const img = new Image();
+                img.onload = function() {
+                    document.documentElement.style.setProperty('--bg-image', `url(${bgUrl})`);
+                    localStorage.setItem('chatBackgroundUrl', bgUrl);
+                };
+                img.onerror = function() {
+                    errorMessage.textContent = 'Invalid image URL or image cannot be loaded';
+                    errorMessage.style.display = 'block';
+                    setTimeout(() => {
+                        errorMessage.style.display = 'none';
+                    }, 3000);
+                };
+                img.src = bgUrl;
+            } else {
+                document.documentElement.style.setProperty('--bg-image', 'none');
+                localStorage.removeItem('chatBackgroundUrl');
+            }
+        });
+
         // Load saved preferences
         document.addEventListener('DOMContentLoaded', () => {
             const savedUsername = localStorage.getItem('chatUsername');
@@ -381,17 +432,18 @@
                 fontSizeSlider.value = parseInt(savedFontSize);
             }
             
+            const savedBgUrl = localStorage.getItem('chatBackgroundUrl');
+            if (savedBgUrl) {
+                document.documentElement.style.setProperty('--bg-image', `url(${savedBgUrl})`);
+                bgUrlInput.value = savedBgUrl;
+            }
+            
             usersRef.child(userId).update({
                 username: username,
-                online: true,
                 lastActive: firebase.database.ServerValue.TIMESTAMP
             });
             
             window.addEventListener('beforeunload', () => {
-                usersRef.child(userId).update({
-                    online: false,
-                    lastActive: firebase.database.ServerValue.TIMESTAMP
-                });
                 typingRef.child(userId).remove();
             });
             
@@ -474,101 +526,6 @@
                 sendMessage();
             }
         });
-
-        // Attachment handling
-        attachmentButton.addEventListener('click', () => {
-            fileInput.click();
-        });
-
-        fileInput.addEventListener('change', async (e) => {
-            if (e.target.files.length > 0) {
-                await handleFiles(e.target.files);
-                fileInput.value = ''; // Reset file input
-            }
-        });
-
-        // Drag and drop handling
-        messageInput.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            messageInput.classList.add('dragover');
-        });
-
-        messageInput.addEventListener('dragleave', () => {
-            messageInput.classList.remove('dragover');
-        });
-
-        messageInput.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            messageInput.classList.remove('dragover');
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                await handleFiles(files);
-            }
-        });
-
-        // Paste handling
-        messageInput.addEventListener('paste', async (e) => {
-            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-            const files = [];
-            for (const item of items) {
-                if (item.kind === 'file') {
-                    files.push(item.getAsFile());
-                }
-            }
-            if (files.length > 0) {
-                e.preventDefault();
-                await handleFiles(files);
-            }
-        });
-
-        // Handle file uploads
-        async function handleFiles(files) {
-            const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/webm', 'audio/mpeg', 'audio/wav'];
-            const maxSize = 10 * 1024 * 1024; // 10MB
-
-            for (const file of files) {
-                if (!allowedTypes.includes(file.type)) {
-                    errorMessage.textContent = `Unsupported file type: ${file.type}`;
-                    errorMessage.style.display = 'block';
-                    continue;
-                }
-
-                if (file.size > maxSize) {
-                    errorMessage.textContent = `File too large: ${file.name} (Max 10MB)`;
-                    errorMessage.style.display = 'block';
-                    continue;
-                }
-
-                try {
-                    const storageRef = storage.ref(`attachments/${userId}/${Date.now()}_${file.name}`);
-                    const snapshot = await storageRef.put(file);
-                    const downloadURL = await snapshot.ref.getDownloadURL();
-
-                    const newMessage = {
-                        username: username,
-                        timestamp: firebase.database.ServerValue.TIMESTAMP,
-                        sender: userId,
-                        status: 'delivered',
-                        readBy: {},
-                        attachment: {
-                            url: downloadURL,
-                            type: file.type,
-                            name: file.name
-                        }
-                    };
-
-                    if (messageInput.value.trim()) {
-                        newMessage.text = messageInput.value.trim();
-                    }
-
-                    await messagesRef.push(newMessage);
-                    messageInput.value = '';
-                } catch (error) {
-                    errorMessage.textContent = `Error uploading file: ${error.message}`;
-                    errorMessage.style.display = 'block';
-                }
-            }
-        }
 
         // Send message function
         async function sendMessage() {
