@@ -295,6 +295,115 @@
             border: 1px solid var(--border-color);
             margin-right: 5px;
         }
+
+        .emoji-picker {
+    position: absolute;
+    bottom: 70px;
+    right: 20px;
+    z-index: 100;
+    display: none;
+}
+
+.message-actions {
+    display: none;
+    position: absolute;
+    right: 30px;
+    top: 5px;
+}
+
+.message:hover .message-actions {
+    display: block;
+}
+
+.action-btn {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    cursor: pointer;
+    margin: 0 2px;
+    padding: 2px 5px;
+    font-size: 12px;
+}
+
+.action-btn:hover {
+    background-color: rgba(0,0,0,0.1);
+    border-radius: 3px;
+}
+
+.reply-info {
+    font-size: 12px;
+    background-color: rgba(0,0,0,0.05);
+    padding: 3px;
+    border-left: 2px solid var(--button-bg);
+    margin-bottom: 5px;
+    border-radius: 3px;
+}
+
+.search-container {
+    padding: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.search-input {
+    flex-grow: 1;
+    padding: 8px;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+.online-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 5px;
+}
+
+.online {
+    background-color: #4CAF50;
+}
+
+.offline {
+    background-color: #ccc;
+}
+
+.link-preview {
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 10px;
+    margin-top: 5px;
+    background-color: rgba(0,0,0,0.03);
+}
+
+.link-preview-title {
+    font-weight: bold;
+}
+
+.theme-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.theme-option {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.theme-option.active {
+    border-color: var(--text-color);
+}
+
+        <script src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1/index.js" type="module"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/linkifyjs@3.0.5/dist/linkify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/linkifyjs@3.0.5/dist/linkify-html.min.js"></script>
     </style>
 </head>
 <body>
@@ -328,11 +437,24 @@
                 <button id="set-bg">Set Background</button>
             </div>
         </div>
+
+                <div class="theme-container">
+            <div class="theme-option active" data-theme="default" style="background-color: #4CAF50;"></div>
+            <div class="theme-option" data-theme="blue" style="background-color: #2196F3;"></div>
+            <div class="theme-option" data-theme="purple" style="background-color: #9C27B0;"></div>
+            <div class="theme-option" data-theme="orange" style="background-color: #FF9800;"></div>
+        </div>
+
+        <div class="search-container">
+    <input type="text" id="search-input" class="search-input" placeholder="Search messages...">
+    <button id="search-button">Search</button>
+</div>
         
         <div id="chat-box"></div>
         <div id="typing-indicator"></div>
         <textarea id="message-input" placeholder="Type a message..."></textarea>
         <div id="button-container">
+            <button id="emoji-button">😊</button>
             <button id="send-button">Send</button>
         </div>
         <div id="error-message"></div>
@@ -763,6 +885,423 @@
         }
         
         deleteExpiredMessages();
+
+    <div id="emoji-picker" class="emoji-picker">
+    <emoji-picker></emoji-picker>
+</div>
+
+    // 1. Emoji Picker
+const emojiButton = document.getElementById('emoji-button');
+emojiButton.addEventListener('click', () => {
+    const picker = document.getElementById('emoji-picker');
+    picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
+});
+
+document.querySelector('emoji-picker').addEventListener('emoji-click', event => {
+    messageInput.value += event.detail.unicode;
+    document.getElementById('emoji-picker').style.display = 'none';
+    messageInput.focus();
+});
+
+// 2. Markdown formatting
+function parseMarkdown(text) {
+    // Basic markdown parsing - in a real app, use the marked library
+    // This is a simplified version
+    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    text = text.replace(/\`(.*?)\`/g, '<code>$1</code>');
+    return text;
+}
+
+// 3. Message Search
+document.getElementById('search-button').addEventListener('click', searchMessages);
+
+function searchMessages() {
+    const searchTerm = document.getElementById('search-input').value.toLowerCase();
+    const messages = document.querySelectorAll('.message-content');
+    
+    messages.forEach(message => {
+        const messageText = message.textContent.toLowerCase();
+        const messageElement = message.closest('.message');
+        
+        if (messageText.includes(searchTerm)) {
+            messageElement.style.backgroundColor = 'rgba(76, 175, 80, 0.2)';
+            messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            messageElement.style.backgroundColor = '';
+        }
+    });
+}
+
+// 4. Message Threading/Replies
+let replyingTo = null;
+
+function setupReplyFunction() {
+    // Add reply button to messages
+    document.querySelectorAll('.message').forEach(message => {
+        if (!message.querySelector('.message-actions')) {
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'message-actions';
+            
+            const replyBtn = document.createElement('button');
+            replyBtn.className = 'action-btn';
+            replyBtn.textContent = 'Reply';
+            replyBtn.addEventListener('click', () => {
+                const messageId = message.id;
+                const messageText = message.querySelector('.message-content').textContent;
+                const sender = message.closest('.message-group').querySelector('.message-header').textContent;
+                
+                replyingTo = {
+                    id: messageId,
+                    text: messageText,
+                    sender: sender
+                };
+                
+                const replyPreview = document.createElement('div');
+                replyPreview.id = 'reply-preview';
+                replyPreview.className = 'reply-info';
+                replyPreview.innerHTML = `Replying to ${sender}: ${messageText.substring(0, 30)}${messageText.length > 30 ? '...' : ''}
+                    <button id="cancel-reply" class="action-btn">Cancel</button>`;
+                
+                if (!document.getElementById('reply-preview')) {
+                    messageInput.parentNode.insertBefore(replyPreview, messageInput);
+                    
+                    document.getElementById('cancel-reply').addEventListener('click', () => {
+                        replyingTo = null;
+                        document.getElementById('reply-preview').remove();
+                    });
+                }
+                
+                messageInput.focus();
+            });
+            
+            actionsDiv.appendChild(replyBtn);
+            message.appendChild(actionsDiv);
+        }
+    });
+}
+
+// Modify sendMessage function to include reply information
+const originalSendMessage = sendMessage;
+sendMessage = async function() {
+    const message = messageInput.value.trim();
+    if (message && messagesRef) {
+        const newMessage = {
+            text: message,
+            username: username,
+            timestamp: firebase.database.ServerValue.TIMESTAMP,
+            sender: userId,
+            status: 'delivered',
+            readBy: {}
+        };
+        
+        // Add reply information if replying to a message
+        if (replyingTo) {
+            newMessage.replyTo = {
+                id: replyingTo.id,
+                text: replyingTo.text.substring(0, 50),
+                sender: replyingTo.sender
+            };
+            
+            replyingTo = null;
+            if (document.getElementById('reply-preview')) {
+                document.getElementById('reply-preview').remove();
+            }
+        }
+        
+        // Apply markdown formatting
+        newMessage.formattedText = parseMarkdown(message);
+        
+        messagesRef.push(newMessage).catch((error) => {
+            errorMessage.textContent = 'Error sending message: ' + error.message;
+            errorMessage.style.display = 'block';
+        });
+        messageInput.value = '';
+        
+        clearTimeout(typingTimeout);
+        isTyping = false;
+        typingRef.child(userId).remove();
+    }
+};
+
+// 5. User Presence Indicators
+// Set up online status
+usersRef.child(userId).onDisconnect().update({
+    online: false,
+    lastSeen: firebase.database.ServerValue.TIMESTAMP
+});
+
+// Update online status periodically
+setInterval(() => {
+    usersRef.child(userId).update({
+        online: true,
+        lastActive: firebase.database.ServerValue.TIMESTAMP
+    });
+}, 60000); // Update every minute
+
+// Initialize online status
+usersRef.child(userId).update({
+    online: true,
+    lastActive: firebase.database.ServerValue.TIMESTAMP
+});
+
+// 6. Message Editing & Deletion
+function setupEditDeleteFunctions() {
+    document.querySelectorAll('.message').forEach(message => {
+        const sender = message.closest('.message-group').querySelector('.message-header').textContent;
+        
+        // Only add edit/delete buttons to user's own messages
+        if (sender === username && !message.querySelector('.edit-btn')) {
+            const actionsDiv = message.querySelector('.message-actions') || document.createElement('div');
+            actionsDiv.className = 'message-actions';
+            
+            const editBtn = document.createElement('button');
+            editBtn.className = 'action-btn edit-btn';
+            editBtn.textContent = 'Edit';
+            editBtn.addEventListener('click', () => {
+                const messageId = message.id;
+                const messageContent = message.querySelector('.message-content').querySelector('div');
+                const originalText = messageContent.textContent;
+                
+                // Replace message content with textarea
+                messageContent.innerHTML = `
+                    <textarea id="edit-text-${messageId}" style="width:100%">${originalText}</textarea>
+                    <div>
+                        <button id="save-edit-${messageId}" class="action-btn">Save</button>
+                        <button id="cancel-edit-${messageId}" class="action-btn">Cancel</button>
+                    </div>
+                `;
+                
+                document.getElementById(`save-edit-${messageId}`).addEventListener('click', () => {
+                    const newText = document.getElementById(`edit-text-${messageId}`).value;
+                    messagesRef.child(messageId).update({
+                        text: newText,
+                        formattedText: parseMarkdown(newText),
+                        edited: true
+                    });
+                    
+                    messageContent.innerHTML = parseMarkdown(newText);
+                    if (!messageContent.querySelector('.edited-indicator')) {
+                        const editedIndicator = document.createElement('span');
+                        editedIndicator.className = 'edited-indicator';
+                        editedIndicator.textContent = ' (edited)';
+                        editedIndicator.style.fontSize = '11px';
+                        editedIndicator.style.color = 'var(--typing-color)';
+                        messageContent.appendChild(editedIndicator);
+                    }
+                });
+                
+                document.getElementById(`cancel-edit-${messageId}`).addEventListener('click', () => {
+                    messageContent.innerHTML = parseMarkdown(originalText);
+                });
+            });
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'action-btn delete-btn';
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.addEventListener('click', () => {
+                if (confirm('Are you sure you want to delete this message?')) {
+                    const messageId = message.id;
+                    messagesRef.child(messageId).remove();
+                }
+            });
+            
+            actionsDiv.appendChild(editBtn);
+            actionsDiv.appendChild(deleteBtn);
+            message.appendChild(actionsDiv);
+        }
+    });
+}
+
+// 7. Custom Themes
+// Set up theme options
+const themeOptions = {
+    default: {
+        '--button-bg': '#4CAF50',
+        '--status-read': '#2196F3'
+    },
+    blue: {
+        '--button-bg': '#2196F3',
+        '--status-read': '#03A9F4'
+    },
+    purple: {
+        '--button-bg': '#9C27B0',
+        '--status-read': '#BA68C8'
+    },
+    orange: {
+        '--button-bg': '#FF9800',
+        '--status-read': '#FFA726'
+    }
+};
+
+// Apply theme
+document.querySelectorAll('.theme-option').forEach(option => {
+    option.addEventListener('click', () => {
+        const theme = option.getAttribute('data-theme');
+        
+        // Update active class
+        document.querySelector('.theme-option.active').classList.remove('active');
+        option.classList.add('active');
+        
+        // Apply theme colors
+        Object.entries(themeOptions[theme]).forEach(([property, value]) => {
+            document.documentElement.style.setProperty(property, value);
+        });
+        
+        localStorage.setItem('chatTheme', theme);
+    });
+});
+
+// Load saved theme
+const savedTheme = localStorage.getItem('chatTheme');
+if (savedTheme && themeOptions[savedTheme]) {
+    document.querySelector(`.theme-option[data-theme="${savedTheme}"]`).click();
+}
+
+// 8. Link Preview
+function createLinkPreview(text) {
+    // Simple link detection - in a production app, use linkifyjs
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const urls = text.match(urlRegex);
+    
+    if (!urls || urls.length === 0) return null;
+    
+    // For demo purposes, just create a simple preview
+    // In a real app, you'd fetch the page metadata using a proxy server
+    const previewDiv = document.createElement('div');
+    previewDiv.className = 'link-preview';
+    
+    const url = urls[0];
+    const domain = new URL(url).hostname;
+    
+    previewDiv.innerHTML = `
+        <div class="link-preview-title">${domain}</div>
+        <div class="link-preview-description">Link preview for ${url}</div>
+        <a href="${url}" target="_blank">Visit Link</a>
+    `;
+    
+    return previewDiv;
+}
+
+// Modify displayMessage to handle these new features
+const originalDisplayMessage = displayMessage;
+displayMessage = function(msg, messageId) {
+    const messageElement = document.createElement('div');
+    messageElement.className = 'message';
+    messageElement.id = messageId;
+    
+    const contentElement = document.createElement('div');
+    contentElement.className = 'message-content';
+    
+    // Add reply information if it's a reply
+    if (msg.replyTo) {
+        const replyInfo = document.createElement('div');
+        replyInfo.className = 'reply-info';
+        replyInfo.textContent = `↩️ ${msg.replyTo.sender}: ${msg.replyTo.text}`;
+        contentElement.appendChild(replyInfo);
+    }
+    
+    // Add text with markdown formatting if present
+    if (msg.text) {
+        const textElement = document.createElement('div');
+        
+        // Use formatted text if available, otherwise apply markdown on the fly
+        if (msg.formattedText) {
+            textElement.innerHTML = msg.formattedText;
+        } else {
+            textElement.innerHTML = parseMarkdown(msg.text);
+        }
+        
+        // Add edited indicator if message was edited
+        if (msg.edited) {
+            const editedIndicator = document.createElement('span');
+            editedIndicator.className = 'edited-indicator';
+            editedIndicator.textContent = ' (edited)';
+            editedIndicator.style.fontSize = '11px';
+            editedIndicator.style.color = 'var(--typing-color)';
+            textElement.appendChild(editedIndicator);
+        }
+        
+        contentElement.appendChild(textElement);
+        
+        // Check for links and add preview
+        const linkPreview = createLinkPreview(msg.text);
+        if (linkPreview) {
+            contentElement.appendChild(linkPreview);
+        }
+    }
+    
+    // Rest of the original displayMessage function...
+    const timestampElement = document.createElement('span');
+    timestampElement.className = 'message-timestamp';
+    timestampElement.textContent = msg.timestamp ? formatTimestamp(msg.timestamp) : 'Sending...';
+    
+    const statusElement = document.createElement('span');
+    statusElement.className = 'message-status';
+    
+    if (msg.sender === userId) {
+        if (msg.status === 'read') {
+            statusElement.textContent = '✓';
+            statusElement.className += ' status-read';
+        } else {
+            statusElement.textContent = '✓';
+            statusElement.className += ' status-delivered';
+        }
+    }
+    
+    if (lastSender === msg.sender && currentGroup) {
+        contentElement.appendChild(timestampElement);
+        messageElement.appendChild(contentElement);
+        messageElement.appendChild(statusElement);
+        currentGroup.appendChild(messageElement);
+    } else {
+        const groupElement = document.createElement('div');
+        groupElement.className = 'message-group';
+        
+        const headerElement = document.createElement('div');
+        headerElement.className = 'message-header';
+        
+        // Add online indicator
+        usersRef.child(msg.sender).once('value', (snapshot) => {
+            const userData = snapshot.val();
+            const isOnline = userData && userData.online;
+            
+            const onlineIndicator = document.createElement('span');
+            onlineIndicator.className = `online-indicator ${isOnline ? 'online' : 'offline'}`;
+            headerElement.prepend(onlineIndicator);
+        });
+        
+        headerElement.textContent = msg.username || 'Anonymous';
+        
+        contentElement.appendChild(timestampElement);
+        messageElement.appendChild(contentElement);
+        messageElement.appendChild(statusElement);
+        
+        groupElement.appendChild(headerElement);
+        groupElement.appendChild(messageElement);
+        
+        chatBox.appendChild(groupElement);
+        
+        currentGroup = groupElement;
+        lastSender = msg.sender;
+    }
+    
+    chatBox.scrollTop = chatBox.scrollHeight;
+    
+    // Set up reply and edit/delete functions for the new message
+    setTimeout(() => {
+        setupReplyFunction();
+        setupEditDeleteFunctions();
+    }, 100);
+};
+
+// Set up message actions for existing messages
+messagesRef.once('value', () => {
+    setTimeout(() => {
+        setupReplyFunction();
+        setupEditDeleteFunctions();
+    }, 500);
+});
     </script>
 </body>
 </html>
