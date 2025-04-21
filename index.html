@@ -709,10 +709,11 @@
                 };
 
                 // Add reply information if replying to a message
+                // Add reply information if replying to a message
                 if (replyingTo) {
                     newMessage.replyTo = {
                         id: replyingTo.id,
-                        text: replyingTo.text.substring(0, 50), // Use the original message's text
+                        text: replyingTo.text,
                         sender: replyingTo.sender
                     };
                     replyingTo = null;
