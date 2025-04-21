@@ -922,24 +922,24 @@ function displayMessage(msg, messageId) {
         replyButton.className = 'action-btn';
         replyButton.textContent = 'Reply';
         replyButton.addEventListener('click', () => {
-            replyingTo = {
-                id: messageId,
-                text: msg.text,
-                sender: msg.username
-            };
-            
-            // Remove existing reply preview if any
-            const existingPreview = document.getElementById('reply-preview');
-            if (existingPreview) {
-                existingPreview.remove();
-            }
-
-            const replyPreview = document.createElement('div');
-            replyPreview.id = 'reply-preview';
-            replyPreview.className = 'reply-info';
-
-            const replyText = document.createElement('div');
-            replyText.textContent = `Replying to ${msg.username}: ${msg.text.substring(0, 50)}${msg.text.length > 50 ? '...' : ''}`;
+        replyingTo = {
+            id: messageId,
+            text: msg.text,
+            sender: msg.username // Make sure this is the display name, not the ID
+        };
+        
+        // Remove existing reply preview if any
+        if (document.getElementById('reply-preview')) {
+            document.getElementById('reply-preview').remove();
+        }
+    
+        const replyPreview = document.createElement('div');
+        replyPreview.id = 'reply-preview';
+        replyPreview.className = 'reply-info';
+    
+        const replyText = document.createElement('div');
+        replyText.textContent = `Replying to ${msg.username}: ${msg.text.substring(0, 50)}${msg.text.length > 50 ? '...' : ''}`;
+        // Rest of the code...
 
             const cancelButton = document.createElement('button');
             cancelButton.className = 'action-btn';
