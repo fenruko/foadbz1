@@ -798,15 +798,11 @@ function displayMessage(msg, messageId) {
     contentElement.className = 'message-content';
     
     // Add reply information if it's a reply
-    if (msg.replyTo && msg.replyTo.id) {
+    // Add reply information if it's a reply
+    if (msg.replyTo && msg.replyTo.sender && msg.replyTo.text) {
         const replyInfo = document.createElement('div');
         replyInfo.className = 'reply-info';
-        
-        // Use the replyTo information stored in the message
-        const replyUsername = msg.replyTo.sender || 'Unknown';
-        const replyText = msg.replyTo.text || '';
-        
-        replyInfo.textContent = `↩️ ${replyUsername}: ${replyText}${replyText.length >= 50 ? '...' : ''}`;
+        replyInfo.textContent = `↩️ Reply to ${msg.replyTo.sender}: ${msg.replyTo.text.substring(0, 50)}${msg.replyTo.text.length >= 50 ? '...' : ''}`;
         contentElement.appendChild(replyInfo);
     }
     
