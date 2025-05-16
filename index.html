@@ -21,6 +21,9 @@
             --typing-color: #666666;
             --font-size: 14px;
             --bg-image: none;
+            --reply-preview-bg: rgba(0, 0, 0, 0.05);
+            --reply-highlight: #4CAF50;
+            --animation-timing: 0.3s;
         }
 
         body.dark-mode {
@@ -36,6 +39,119 @@
             --button-text: #202124;
             --input-bg: #3c4043;
             --typing-color: #9e9e9e;
+            --reply-preview-bg: rgba(255, 255, 255, 0.1);
+            --reply-highlight: #8bc34a;
+        }
+
+        /* Add new animations and styling */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .message {
+            animation: slideIn var(--animation-timing) ease-out;
+            transition: all var(--animation-timing) ease;
+            margin: 8px 0;
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .message:hover {
+            transform: translateX(4px);
+        }
+
+        .reply-preview {
+            animation: slideIn var(--animation-timing) ease-out;
+            background: var(--reply-preview-bg);
+            border-left: 4px solid var(--reply-highlight);
+            padding: 8px 12px;
+            margin: 8px 0;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: all var(--animation-timing) ease;
+        }
+
+        .reply-info {
+            background: var(--reply-preview-bg);
+            border-left: 4px solid var(--reply-highlight);
+            padding: 8px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            opacity: 0.9;
+            transition: all var(--animation-timing) ease;
+        }
+
+        .reply-info:hover {
+            opacity: 1;
+            transform: translateX(2px);
+        }
+
+        .action-btn {
+            opacity: 0;
+            transition: all 0.2s ease;
+            background: var(--message-bg);
+            color: var(--text-color);
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            margin: 0 2px;
+            cursor: pointer;
+        }
+
+        .message:hover .action-btn {
+            opacity: 1;
+        }
+
+        .action-btn:hover {
+            background: var(--button-bg);
+            color: var(--button-text);
+            transform: scale(1.1);
+        }
+
+        /* Loading animation */
+        .loading-dots {
+            display: inline-block;
+        }
+
+        .loading-dots::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+            display: inline-block;
+            width: 0;
+            overflow: hidden;
+            vertical-align: bottom;
+        }
+
+        @keyframes dots {
+            to { width: 1.25em; }
+        }
+
+        /* Improve message input area */
+        #message-input {
+            transition: all var(--animation-timing) ease;
+            border-radius: 8px;
+            margin: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        #message-input:focus {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
         }
 
         body {
@@ -1263,5 +1379,3 @@ function displayMessage(msg, messageId) {
     </script>
 </body>
 </html>
-
-
